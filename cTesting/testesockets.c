@@ -42,10 +42,11 @@ void *thread_client(void *arg) {
 
     do {
         printf("%s", "Digite.\n");
-        fgets(linha, 20, fp); // irah gerar um warning de unsafe/deprecated.
+        // fgets(linha, 20, fp); // irah gerar um warning de unsafe/deprecated.
         /* Envia mensagem para o endereco remoto
         parametros(descritor socket, dados, tamanho dos dados, flag, estrutura do socket remoto, tamanho da estrutura) */
-        sendto(sock, linha, ECHOMAX, 0, (struct sockaddr *)&destiny, sizeof(destiny));
+        sendto(sock, "Teste", ECHOMAX, 0, (struct sockaddr *)&destiny, sizeof(destiny));
+        sleep(1);
     } while(strcmp(linha,"exit"));
     close(sock);
     return 0;
@@ -79,7 +80,7 @@ void *thread_server(void *arg) {
         /* Recebe mensagem do endereco remoto
         parametros(descritor socket, dados, tamanho dos dados, flag, estrutura do socket remoto, tamanho da estrutura) */
         recvfrom(sock, linha, ECHOMAX, 0, (struct sockaddr *)&from, &adl);
-        printf("%s\n", linha);
+        printf("recebido: %s\n", linha);
     }
     while(strcmp(linha,"exit"));
     else puts("Porta ocupada");
@@ -103,10 +104,17 @@ int main() {
     printf("Thread cliente criada.\n");
 
     // Esperando as threads terminarem
-    for (i = 0; i < 2; i++) {
-        printf("Juntando threads\n");
-        pthread_join(threads[i], NULL);
-    }
+    // for (i = 0; i < 2; i++) {
+    //     printf("Juntando threads\n");
+    //     pthread_join(threads[i], NULL);
+    // }
+
+    sleep(5);
+
+    printf("Juntando 1ª thread\n");
+    pthread_join(threads[0], NULL);
+    printf("Juntando 2ª thread\n");
+    pthread_join(threads[1], NULL);
 
     printf("Threads finalizadas.\n");
     return 0;

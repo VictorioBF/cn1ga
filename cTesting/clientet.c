@@ -26,7 +26,7 @@ void *thread_function(void *arg) {
 	A funcao bzero eh usada para colocar zeros na estrutura target */
     bzero((char *)&target,sizeof(target));
     target.sin_family = AF_INET;
-    target.sin_addr.s_addr = inet_addr(servIP); /* host local */
+    target.sin_addr.s_addr = inet_addr("172.17.0.2"); /* host local */
     target.sin_port = htons(6000); /* porta de destino */
 
 	do {
