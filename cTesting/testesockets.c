@@ -19,32 +19,23 @@ typedef int bool;
 bool error;
 
 // Função que será executada pelas threads
-void *thread_client(void *arg) {
+void *sender_thread(void *arg) {
     int sock,i;
     struct sockaddr_in destiny;
     char linha[ECHOMAX+1];
     char servIP[ECHOMAX];
     FILE *fp;
 
-    // Solicita ao usuário que insira o IP do servidor
-    // printf("Por favor, insira o IP do servidor: ");
-    // scanf("%s", servIP);
-
     /* Criando Socket */
     if ((sock = socket(AF_INET,SOCK_DGRAM,0)) < 0)
         printf("Socket Falhou!!!\n");
-        
-    /* Construindo a estrutura de endereco do servidor */
-    // bzero((char *)&destiny,sizeof(destiny));
+
     destiny.sin_family = AF_INET;
     destiny.sin_addr.s_addr = inet_addr("127.0.0.1"); /* host local */
     destiny.sin_port = htons(6000); /* porta de destino */
 
     do {
-        printf("%s", "Digite.\n");
-        // fgets(linha, 20, fp); // irah gerar um warning de unsafe/deprecated.
-        /* Envia mensagem para o endereco remoto
-        parametros(descritor socket, dados, tamanho dos dados, flag, estrutura do socket remoto, tamanho da estrutura) */
+        // Envia mensagem para o endereco remoto
         sendto(sock, "Teste", ECHOMAX, 0, (struct sockaddr *)&destiny, sizeof(destiny));
         sleep(1);
     } while(strcmp(linha,"exit"));
@@ -52,7 +43,7 @@ void *thread_client(void *arg) {
     return 0;
 }
 
-void *thread_server(void *arg) {
+void *receiver_thread(void *arg) {
     int sock;
     /* Estrutura: familia + endereco IP + porta */
     struct sockaddr_in me, from;
@@ -60,21 +51,18 @@ void *thread_server(void *arg) {
     int adl = sizeof(me);
     char linha[ECHOMAX];
 
-       /* Cria o socket para enviar e receber datagramas
-    parâmetros(familia, tipo, protocolo) */
+    // Cria o socket para enviar e receber datagramas parâmetros(familia, tipo, protocolo)
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         printf("ERRO na Criacao do Socket!\n");
     else  
         printf("Servidor esperando mensagens...\n");
 
-    /* Construcao da estrutura do endereco local
-    Preenchendo a estrutura socket me (familia, IP, porta)*/
+    // Construcao da estrutura do endereco local, Preenchendo a estrutura socket me (familia, IP, porta)
     me.sin_family = AF_INET;
     me.sin_addr.s_addr=htonl(INADDR_ANY); /* endereco IP local */
     me.sin_port = htons(6000); /* porta local  */
 
-       /* Bind para o endereco local
-    parametros(descritor socket, estrutura do endereco local, comprimento do endereco) */
+    // Bind para o endereco local parametros(descritor socket, estrutura do endereco local, comprimento do endereco)
     if(-1 != bind(sock, (struct sockaddr *)&me, sizeof(me)))
     do  {
         /* Recebe mensagem do endereco remoto
@@ -95,21 +83,15 @@ int main() {
 
     i = 0;
     thread_args[i] = i;
-    pthread_create(&threads[i], NULL, thread_server, (void *)&thread_args[i]);
-    printf("Thread servidor criada.\n");
+    pthread_create(&threads[i], NULL, receiver_thread, (void *)&thread_args[i]);
+    printf("Thread de recebimento criada.\n");
 
     i = 1;
     thread_args[i] = i;
-    pthread_create(&threads[i], NULL, thread_client, (void *)&thread_args[i]);
-    printf("Thread cliente criada.\n");
+    pthread_create(&threads[i], NULL, sender_thread, (void *)&thread_args[i]);
+    printf("Thread de envio criada.\n");
 
-    // Esperando as threads terminarem
-    // for (i = 0; i < 2; i++) {
-    //     printf("Juntando threads\n");
-    //     pthread_join(threads[i], NULL);
-    // }
-
-    sleep(5);
+    // sleep(5);
 
     printf("Juntando 1ª thread\n");
     pthread_join(threads[0], NULL);
