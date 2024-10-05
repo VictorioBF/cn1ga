@@ -12,15 +12,14 @@
 
 #define ECHOMAX 255
 
-typedef int bool;
-#define true 1
-#define false 0
+// typedef int bool;
+// #define true 1
+// #define false 0
+// bool error;
 
-bool error;
+// versão 0.11
 
-// versão 0.1
-
-// Função que será executada pelas threads
+// Função de envio de informações
 void *sender_thread(void *arg) {
     int sock,i;
     struct sockaddr_in destiny;
@@ -62,6 +61,7 @@ void *sender_thread(void *arg) {
     close(sock);
 }
 
+// Função que rebe as informações
 void *receiver_thread(void *arg) {
     int sock;
     /* Estrutura: familia + endereco IP + porta */
@@ -112,10 +112,10 @@ int main() {
 
     // sleep(5);
 
-    printf("Juntando 1ª thread\n");
-    pthread_join(threads[0], NULL);
-    printf("Juntando 2ª thread\n");
-    pthread_join(threads[1], NULL);
+    // printf("Juntando 1ª thread\n");
+    // pthread_join(threads[0], NULL);
+    // printf("Juntando 2ª thread\n");
+    // pthread_join(threads[1], NULL);
 
     printf("Threads finalizadas.\n");
     return 0;
