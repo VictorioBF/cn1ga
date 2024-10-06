@@ -18,9 +18,10 @@
 // #define false 0
 // bool error;
 
-// versão 0.12
+// versão 0.15
 
 int interval = 1;
+int segue_o_baile = 1;
 char *ipAddresses[NUM_IPS] = {NULL};
 
 // Controle do array de IPs
@@ -43,27 +44,32 @@ void add_ip_address(char new_ip_address) {
 }
 
 // Recebe um comando e retorna a última linha dele
-char *executa_comando(char *comando) {
-    /*
-        Recebe um comando e retorna a última linha dele
-        - Comandos 'infinitos' (ex: top) vão travar na função, que não retornará nada.
-    */
-    FILE *fp;
-    char path[1035];
+char *execute_command(const char *command) {
+    char buffer[128];
+    char *result = NULL;
+    size_t size = 1;
+    FILE *pipe = popen(command, "r");
 
-    fp = popen(comando, "r"); // Executa o comando recebido e abre um pipe para leitura
-    if (fp == NULL) {
-        printf("Falha ao executar o comando %s\n", comando);
-        return "Erro";
+    if (!pipe) {
+        return NULL;
     }
 
-    // Lê a saída do comando linha a linha
-    while (fgets(path, sizeof(path), fp) != NULL) { // ao final do while, o path será a última linha do comando
-        // printf("%s", path);
+    while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
+        size_t len = strlen(buffer);
+        char *new_result = realloc(result, size + len);
+        if (new_result == NULL) {
+            free(result);
+            pclose(pipe);
+            return NULL;
+        }
+        result = new_result;
+        strcpy(result, buffer);
+        size = len + 1;
     }
+    printf("Comando executado, resultado: \n%s", result);
 
-    // Fecha o pipe
-    pclose(fp);
+    pclose(pipe);
+    return result;
 }
 
 // Funções para as threads de envio e recebimento de pacotes
@@ -77,31 +83,23 @@ void *sender_thread(void *arg) {
     char path[1035];
 
     // Criando Socket
+    printf("Criando socket para o envio...\n");
     if ((sock = socket(AF_INET,SOCK_DGRAM,0)) < 0)
         printf("Socket Falhou!!!\n");
+    printf("Socket deu boa!!!\n");
 
     do {
         // Todo: Fazer uma ou algums funções para executar os comandos e montar a string
         /*
-        organizar comandos : linha 50
+        organizar comandos
         - organizar strings
         - definir pacotes
         */
         // Lendo informações para serem enviadas
-        fp = popen("vmstat", "r"); // Executa o comando vmstat e abre um pipe para leitura
-        if (fp == NULL) {
-            printf("Falha ao executar o comando vmstat\n");
-            return (void *)1;
-        }
+        printf("Thread de envio tentantdo executar comando...\n");
+        strcpy(path, execute_command("vmstat"));
 
-        // Lê a saída do comando linha por linha
-        while (fgets(path, sizeof(path), fp) != NULL) {
-            // printf("%s", path);
-        }
-
-        // Fecha o pipe
-        pclose(fp);
-
+        printf("Resultado do comando %s\n", path);
         // Envio para os múltiplos endereços
         for (size_t i = 0; i < sizeof(ipAddresses) / sizeof(int); i++) {
             destiny.sin_family = AF_INET;
@@ -109,8 +107,8 @@ void *sender_thread(void *arg) {
             destiny.sin_port = htons(6000); // Porta de destino
             sendto(sock, path, ECHOMAX, 0, (struct sockaddr *)&destiny, sizeof(destiny)); // Envio das informações
         }
-        sleep(1);
-    } while(strcmp(linha,"exit"));
+        sleep(interval);
+    } while(segue_o_baile = 1);
     close(sock);
 
     return (void *)0; // É necessário cast para evitar warning
@@ -144,7 +142,7 @@ void *receiver_thread(void *arg) {
         recvfrom(sock, linha, ECHOMAX, 0, (struct sockaddr *)&from, &adl);
         printf("recebido: %s\n", linha);
     }
-    while(strcmp(linha,"exit"));
+    while(segue_o_baile = 1);
     else puts("Porta ocupada");
     close(sock);
     return 0;
@@ -167,14 +165,12 @@ int main() {
     pthread_create(&threads[i], NULL, sender_thread, (void *)&thread_args[i]);
     printf("Thread de envio criada.\n");
 
-    // sleep(5);
+    printf("Juntando 1ª thread\n");
+    pthread_join(threads[0], NULL);
+    printf("Juntando 2ª thread\n");
+    pthread_join(threads[1], NULL);
 
-    // printf("Juntando 1ª thread\n");
-    // pthread_join(threads[0], NULL);
-    // printf("Juntando 2ª thread\n");
-    // pthread_join(threads[1], NULL);
-
-    // printf("Threads finalizadas.\n");
+    printf("Programa finalizado!\n");
     return 0;
 }
 
