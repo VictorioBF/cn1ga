@@ -100,16 +100,18 @@ void *sender_thread(void *arg) {
             destiny.sin_addr.s_addr = inet_addr(ipAddress); // Endereço
             destiny.sin_port = htons(6000); // Porta de destino
             sendto(sock, path, ECHOMAX, 0, (struct sockaddr *)&destiny, sizeof(destiny)); // Envio das informações
+            // printf("Pacote enviado\n");
         }
         sleep(interval);
-    } while(stop = 0);
+    } while(stop == 0);
+    // printf("Fechando socket de envio\n");
     close(sock);
 
     return (void *)0; // É necessário cast para evitar warning
 }
 
 // Função que rebe as informações
-void *receiver_thread(void *arg) {
+void *data_receiver_thread(void *arg) {
     int sock;
     // Estrutura: familia + endereco IP + porta
     struct sockaddr_in me, from;
@@ -135,7 +137,7 @@ void *receiver_thread(void *arg) {
             recvfrom(sock, linha, ECHOMAX, 0, (struct sockaddr *)&from, &adl);
             printf("%s", linha);
         }
-        while(stop = 0);
+        while(stop == 0);
     else puts("Porta ocupada");
 
     // Fecha o socket
@@ -152,8 +154,8 @@ int main() {
 
     i = 0;
     thread_args[i] = i;
-    pthread_create(&threads[i], NULL, receiver_thread, (void *)&thread_args[i]);
-    printf("Thread de recebimento criada.\n");
+    pthread_create(&threads[i], NULL, data_receiver_thread, (void *)&thread_args[i]);
+    printf("Thread de recebimento de dados criada.\n");
 
     i = 1;
     thread_args[i] = i;
