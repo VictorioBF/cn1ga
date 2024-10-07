@@ -20,7 +20,7 @@
 // #define false 0
 // bool error;
 
-// versão 0.20
+// versão 0.21
 
 int interval = 1;
 int stop = 0;
@@ -119,16 +119,12 @@ void *data_sender_thread(void *arg) {
         pthread_mutex_lock(&input_lock);
         while (pause_output) {
             pthread_cond_wait(&input_cond, &input_lock);
-            printf("envio bloqueado");
+            // printf("envio bloqueado");
         }
         pthread_mutex_unlock(&input_lock);
-        // Todo: Fazer uma ou algums funções para executar os comandos e montar a string
-        /*
-        organizar comandos
-        - organizar strings
-        - definir pacotes
-        */
-        // Lendo informações para serem enviadas
+        // Todo: Definir comandos (usei o vmstat como teste, faz parte das ferramentas do eBPF) e montar strings para mostrar em tela.
+
+        // Execução dos comandos com dados
         // printf("Thread de envio tentantdo executar comando...\n");
         strcpy(path, execute_command("vmstat"));
 
@@ -176,8 +172,8 @@ void *data_receiver_thread(void *arg) {
             pthread_mutex_lock(&input_lock);
             while (pause_output) { pthread_cond_wait(&input_cond, &input_lock); }
             pthread_mutex_unlock(&input_lock);
-            /* Recebe mensagem do endereco remoto
-            parametros(descritor socket, dados, tamanho dos dados, flag, estrutura do socket remoto, tamanho da estrutura) */
+
+            // Recebe mensagem do endereco remoto - parametros(descritor socket, dados, tamanho dos dados, flag, estrutura do socket remoto, tamanho da estrutura)
             recvfrom(sock, linha, ECHOMAX, 0, (struct sockaddr *)&from, &adl);
             printf("%s", linha);
         }
@@ -191,38 +187,40 @@ void *data_receiver_thread(void *arg) {
 
 //
 void alter_interval(){
-    // mutex
+    // Todo: desenvolver para fazer a alteração do intervalo (variável interval)
+    // enviar e receber isso via UDP (está na descrição do trabalho, mas não nos pontos que serão avaliados)
 
     return (void)0;
 }
 
 // Controle de input do usuário
 void *user_input_thread(void *arg) {
-    char *input;
+    char input;
     char in[100];
 
     do {
-        fgets(in, sizeof(in), stdin);
-        
+        printf("Aperte enter para usar input\n");
+        fgets(in, sizeof(in), stdin); // Todo: esse input está causando erro, mas o arquivo testebloqueio.c tem algo muito parecido que funciona sem este erro. Corrigir.
+
         pthread_mutex_lock(&input_lock);
-        pause_output = 1;  // Signal the output thread to pause
+        pause_output = 1;  // Pausa o fluxo das outras threads
         pthread_mutex_unlock(&input_lock);
 
         // Bloqueia a execução até o usuário apertar enter
         printf("1: Adicionar IP | 2: Alterar tempo de envio | 0: Finalizar programa \nDigite um número:\n");
-        *input = getchar();
-        switch (*input) {
+        // input = getchar();
+        switch (input) {
         case '1':
-            // code block
+            // Todo: input do usuário e chamar a função add_ip_address
             break;
         case '2':
-            // code block
+            // Todo: chamar a função alter_interval
             break;
         case '0':
             stop = 1;
             break;
         default:
-            // code block
+            // Todo: aviso de exceção
         }
         pthread_mutex_lock(&input_lock);
         pause_output = 0;  // Signal the output thread to resume
@@ -238,13 +236,13 @@ int main() {
     int i;
     char local_ip[100];
 
+    // Busca e insere o IP local no array de IPs a enviar pacotes
     get_local_ip(local_ip, sizeof(local_ip));
     add_ip_address(local_ip);
 
-    // // Inicialização dos mutex
-    // pthread_mutex_init(&send, NULL);
-    // pthread_mutex_init(&receive, NULL);
-    // pthread_mutex_init(&input, NULL);
+    // Inicialização dos mutex
+    pthread_mutex_init(&input_lock, NULL);
+    pthread_cond_init(&input_cond, NULL);
 
     i = 0;
     thread_args[i] = i;
@@ -256,26 +254,18 @@ int main() {
     pthread_create(&threads[i], NULL, data_sender_thread, (void *)&thread_args[i]);
     printf("Thread de envio criada.\n");
 
-    // i = 2;
-    // thread_args[i] = i;
-    // pthread_create(&threads[i], NULL, user_input_thread, (void *)&thread_args[i]);
-    // printf("Thread de input criada\n");
+    i = 2;
+    thread_args[i] = i;
+    pthread_create(&threads[i], NULL, user_input_thread, (void *)&thread_args[i]);
+    printf("Thread de input criada\n");
 
     // printf("Juntando 1ª thread\n");
     pthread_join(threads[0], NULL);
+    // printf("Juntando 3ª thread\n");
+    pthread_join(threads[2], NULL);
     // printf("Juntando 2ª thread\n");
     pthread_join(threads[1], NULL);
-    // printf("Juntando 3ª thread\n");
-    // pthread_join(threads[2], NULL);
 
     printf("Programa finalizado!\n");
     return 0;
 }
-
-/*
-
-input do usuário
-- alteração de tempo de coleta dos dados
-- inclusão de novos ips 
-
-*/
