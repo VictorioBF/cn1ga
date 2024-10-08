@@ -15,7 +15,7 @@
 #define IP_SIZE 16
 #define APP_PORT 6001
 
-// versão 0.30
+// versão 0.40
 
 int interval = 1;
 int stop = 0;
@@ -23,6 +23,7 @@ char ipAddresses[NUM_IPS][IP_SIZE];
 int current_ip_index = 0;
 
 // mutex
+pthread_mutex_t interval_lock;
 pthread_mutex_t input_lock;
 pthread_cond_t input_cond;
 int pause_output = 0;
@@ -98,6 +99,8 @@ void alter_interval() {
     char input_buffer[100];
     int new_interval;
 
+    // Todo: fazer envio e recebimento de pacotes que alterem o intervalo dos outros computadores
+
     printf("Digite o novo intervalo de envio (em segundos): ");
 
     if (fgets(input_buffer, sizeof(input_buffer), stdin) != NULL) {
@@ -108,9 +111,9 @@ void alter_interval() {
         new_interval = atoi(input_buffer);
 
         if (new_interval > 0) {
-            pthread_mutex_lock(&input_lock);
+            pthread_mutex_lock(&interval_lock);
             interval = new_interval;
-            pthread_mutex_unlock(&input_lock);
+            pthread_mutex_unlock(&interval_lock);
             printf("Intervalo atualizado para %d segundos.\n", interval);
         } else {
             printf("Entrada inválida! O intervalo deve ser um número inteiro positivo.\n");
@@ -123,11 +126,8 @@ void alter_interval() {
 // Funções para as threads de envio e recebimento de pacotes
 // Função de envio de informações
 void *data_sender_thread(void *arg) {
-    int sock, i;
+    int sock;
     struct sockaddr_in destiny;
-    char linha[ECHOMAX + 1];
-    char servIP[ECHOMAX];
-    FILE *fp;
     char path[1035];
 
     // Criando Socket
@@ -146,6 +146,8 @@ void *data_sender_thread(void *arg) {
         pthread_mutex_unlock(&input_lock);
 
         // Execução dos comandos com dados
+        // Todo: alterar para usar os comandos eBPF
+        // Todo: alterar para que as string impressas fiquem decentes no output.
         char *command_result = execute_command("vmstat");
         if (command_result != NULL) {
             strncpy(path, command_result, sizeof(path) - 1);
@@ -166,9 +168,9 @@ void *data_sender_thread(void *arg) {
         }
 
         // Leitura thread-safe do intervalo
-        pthread_mutex_lock(&input_lock);
+        pthread_mutex_lock(&interval_lock);
         int current_interval = interval;
-        pthread_mutex_unlock(&input_lock);
+        pthread_mutex_unlock(&interval_lock);
 
         sleep(current_interval);
     } while (stop == 0);
@@ -209,7 +211,7 @@ void *data_receiver_thread(void *arg) {
             ssize_t recv_len = recvfrom(sock, linha, ECHOMAX - 1, 0, (struct sockaddr *)&from, &adl);
             if (recv_len > 0) {
                 linha[recv_len] = '\0'; // Garante a terminação nula
-                printf("Recebido: %s\n", linha);
+                printf("Recebido:\n %s\n", linha);
             }
         } while (stop == 0);
     }
@@ -239,7 +241,7 @@ void *user_input_thread(void *arg) {
         pthread_mutex_unlock(&input_lock);
 
         // Bloqueia a execução até o usuário apertar enter
-        printf("1: Adicionar IP | 2: Alterar tempo de envio | 0: Finalizar programa \nDigite um número:\n");
+        printf("1: Adicionar IP | 2: Alterar tempo de envio\nDigite um número:\n");
         input = getchar();
         while (getchar() != '\n'); // Limpa o buffer
 
@@ -256,9 +258,6 @@ void *user_input_thread(void *arg) {
             case '2':
                 // Chamar a função alter_interval
                 alter_interval();
-                break;
-            case '0':
-                stop = 1;
                 break;
             default:
                 printf("Opção inválida!\n");
@@ -283,6 +282,7 @@ int main() {
     add_ip_address(local_ip);
 
     // Inicialização dos mutex
+    pthread_mutex_init(&interval_lock, NULL);
     pthread_mutex_init(&input_lock, NULL);
     pthread_cond_init(&input_cond, NULL);
 
@@ -319,6 +319,7 @@ int main() {
     printf("Programa finalizado!\n");
 
     // Destruir mutex e condição
+    pthread_mutex_destroy(&interval_lock);
     pthread_mutex_destroy(&input_lock);
     pthread_cond_destroy(&input_cond);
 
